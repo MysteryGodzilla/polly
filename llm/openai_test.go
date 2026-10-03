@@ -2,7 +2,9 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/alexschlessinger/pollytool/messages"
@@ -612,5 +614,34 @@ func TestToolToResponsesFunctionToolStrictModeDowngradesOptionalNestedField(t *t
 	originalFilters := toolSchema.Properties()["filters"].(map[string]any)
 	if _, mutated := originalFilters["additionalProperties"]; mutated {
 		t.Fatalf("expected original nested schema to remain unmodified, got %#v", originalFilters["additionalProperties"])
+	}
+}
+
+func TestBuildChatCompletionRequestParamsSampling(t *testing.T) {
+	topP, presence := 0.9, 0.5
+	req := &CompletionRequest{
+		Model:           "local",
+		Messages:        []messages.ChatMessage{{Role: messages.MessageRoleUser, Content: "hi"}},
+		TopP:            &topP,
+		PresencePenalty: &presence,
+		ExtraBody:       map[string]any{"top_k": 64, "min_p": 0.05},
+	}
+	body, err := json.Marshal(buildChatCompletionRequestParams(req))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["top_p"] != 0.9 || got["presence_penalty"] != 0.5 || got["top_k"] != 64.0 || got["min_p"] != 0.05 {
+		t.Fatalf("sampling fields missing or wrong: %s", body)
+	}
+
+	body, _ = json.Marshal(buildChatCompletionRequestParams(&CompletionRequest{Model: "local", Messages: req.Messages}))
+	for _, key := range []string{"top_p", "presence_penalty", "top_k"} {
+		if strings.Contains(string(body), `"`+key+`"`) {
+			t.Fatalf("%s sent while unset: %s", key, body)
+		}
 	}
 }

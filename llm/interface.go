@@ -47,7 +47,14 @@ type CompletionRequest struct {
 	// Temperature controls sampling when non-nil. Leave nil to omit the
 	// parameter from the upstream request — required for reasoning models
 	// (o1, o3, gpt-5.x) which 400 if temperature is supplied at all.
-	Temperature    *float32
+	Temperature *float32
+	// TopP and PresencePenalty are sent when non-nil (OpenAI chat completions only).
+	TopP            *float64
+	PresencePenalty *float64
+	// ExtraBody adds top-level fields to an OpenAI chat completions request, for settings that
+	// OpenAI-compatible servers accept but OpenAI does not (llama.cpp's top_k, min_p,
+	// repeat_penalty). Other providers ignore it.
+	ExtraBody      map[string]any
 	Model          string
 	MaxTokens      int
 	Messages       []messages.ChatMessage // Message history

@@ -289,6 +289,15 @@ func buildChatCompletionRequestParams(req *CompletionRequest) openai.ChatComplet
 	if req.Temperature != nil {
 		params.Temperature = param.NewOpt(float64(*req.Temperature))
 	}
+	if req.TopP != nil {
+		params.TopP = param.NewOpt(*req.TopP)
+	}
+	if req.PresencePenalty != nil {
+		params.PresencePenalty = param.NewOpt(*req.PresencePenalty)
+	}
+	if len(req.ExtraBody) > 0 {
+		params.SetExtraFields(req.ExtraBody)
+	}
 
 	if req.MaxTokens > 0 {
 		params.MaxCompletionTokens = param.NewOpt(int64(req.MaxTokens))
