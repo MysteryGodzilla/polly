@@ -14,6 +14,7 @@ import (
 	openai "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/packages/respjson"
 	"github.com/openai/openai-go/v3/responses"
 	"github.com/openai/openai-go/v3/shared"
 )
@@ -113,6 +114,9 @@ func (o OpenAIClient) handleStreamingChatCompletion(ctx context.Context, params 
 		if len(chunk.Choices) == 0 {
 			continue
 		}
+		if reasoning := extraText(chunk.Choices[0].Delta.JSON.ExtraFields); reasoning != "" {
+			streamCore.EmitReasoning(reasoning)
+		}
 		if delta := chunk.Choices[0].Delta.Content; delta != "" {
 			streamCore.EmitContent(delta)
 		}
@@ -136,6 +140,9 @@ func (o OpenAIClient) handleNonStreamingChatCompletion(ctx context.Context, para
 
 	if len(resp.Choices) > 0 {
 		choice := resp.Choices[0]
+		if reasoning := extraText(choice.Message.JSON.ExtraFields); reasoning != "" {
+			streamCore.EmitReasoning(reasoning)
+		}
 		if choice.Message.Content != "" {
 			streamCore.EmitContent(choice.Message.Content)
 		}
@@ -853,4 +860,20 @@ func deepCopyMap(input map[string]any) map[string]any {
 		}
 	}
 	return out
+}
+
+// extraText reads the reasoning that OpenAI-compatible servers (vLLM, llama.cpp, LiteLLM, DeepSeek) put
+// beside the content as "reasoning_content", or "reasoning"; the official API has no such field, so the
+// SDK leaves it among the extra fields. (metald patch)
+func extraText(fields map[string]respjson.Field) string {
+	for _, key := range []string{"reasoning_content", "reasoning"} {
+		// The SDK marks fields it has no schema for as invalid, but keeps their raw JSON.
+		if f, ok := fields[key]; ok && f.Raw() != "" {
+			var text string
+			if json.Unmarshal([]byte(f.Raw()), &text) == nil && text != "" {
+				return text
+			}
+		}
+	}
+	return ""
 }
