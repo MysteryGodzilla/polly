@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -758,7 +759,7 @@ func (r *ToolRegistry) LoadToolAuto(pathOrServer string) (LoadResult, error) {
 
 	// For non-JSON, try as shell tool
 	// Check if executable
-	if info.Mode()&0111 == 0 {
+	if !runnable(runtime.GOOS, pathOrServer, info) {
 		return LoadResult{}, fmt.Errorf("%s is not executable (for shell tools, run: chmod +x %s)", pathOrServer, pathOrServer)
 	}
 

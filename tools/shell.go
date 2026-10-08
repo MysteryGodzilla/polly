@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"strings"
 
 	"github.com/alexschlessinger/pollytool/schema"
@@ -114,7 +113,7 @@ func (s *ShellTool) Execute(ctx context.Context, args map[string]any) (string, e
 	}
 
 	// Run command with --execute using context for timeout
-	cmd := exec.CommandContext(ctx, s.Command, "--execute", string(argsJSON))
+	cmd := ScriptCommand(ctx, s.Command, "--execute", string(argsJSON))
 
 	if err := sandbox.WrapCmd(s.sandbox, cmd); err != nil {
 		return "", fmt.Errorf("sandbox: %w", err)
@@ -145,7 +144,7 @@ func (s *ShellTool) Execute(ctx context.Context, args map[string]any) (string, e
 
 // runCommand executes the shell tool with a single argument.
 func (s *ShellTool) runCommand(arg string) (string, error) {
-	cmd := exec.Command(s.Command, arg)
+	cmd := ScriptCommand(context.Background(), s.Command, arg)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -155,7 +154,7 @@ func (s *ShellTool) runCommand(arg string) (string, error) {
 
 // runCommandSandboxed executes the shell tool inside a sandbox.
 func (s *ShellTool) runCommandSandboxed(arg string, sb sandbox.Sandbox) (string, error) {
-	cmd := exec.Command(s.Command, arg)
+	cmd := ScriptCommand(context.Background(), s.Command, arg)
 	if err := sandbox.WrapCmd(sb, cmd); err != nil {
 		return "", fmt.Errorf("sandbox: %w", err)
 	}
