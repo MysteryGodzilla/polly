@@ -13,10 +13,13 @@ import (
 var interpreters = map[string]string{".py": "python"}
 
 // ScriptCommand returns the command that runs a shell tool with args: the file itself, or on
-// Windows its interpreter with the file as the first argument.
+// Windows its interpreter with the file as the first argument. Python there writes UTF-8: its
+// default is the ANSI code page, which can't print most non-Latin text and crashes the tool.
 func ScriptCommand(ctx context.Context, path string, args ...string) *exec.Cmd {
 	if interp, ok := interpreter(runtime.GOOS, path); ok {
-		return exec.CommandContext(ctx, interp, append([]string{path}, args...)...)
+		cmd := exec.CommandContext(ctx, interp, append([]string{path}, args...)...)
+		cmd.Env = append(os.Environ(), "PYTHONUTF8=1")
+		return cmd
 	}
 	return exec.CommandContext(ctx, path, args...)
 }
